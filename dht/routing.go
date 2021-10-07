@@ -15,7 +15,7 @@ type Routing struct {
 }
 
 func NewRouting() *Routing {
-	buckets := make([][]PacketContact, HASH_SIZE)
+	buckets := make([][]PacketContact, HashSize)
 
 	return &Routing{
 		buckets: buckets,
@@ -115,7 +115,7 @@ func (this *Routing) AddNode(contact PacketContact) {
 	bucketNb := this.countSameBit(contact.Hash)
 
 	this.Lock()
-	if bucketNb == HASH_SIZE || len(this.buckets[bucketNb]) > BUCKET_SIZE {
+	if bucketNb == HashSize || len(this.buckets[bucketNb]) > BucketSize {
 		this.Unlock()
 		return
 	}
@@ -168,20 +168,20 @@ func (this *Routing) FindNode(hash []byte) []PacketContact {
 	this.RLock()
 	defer this.RUnlock()
 
-	if size < BUCKET_SIZE {
+	if size < BucketSize {
 		return this.GetAllNodes()
 	}
 
 	bucketNb := this.countSameBit(hash)
 
 	// get neighbours when asking for self
-	if bucketNb == HASH_SIZE {
+	if bucketNb == HashSize {
 		bucketNb--
 	}
 
-	for len(res) < BUCKET_SIZE && bucketNb < HASH_SIZE && bucketNb >= 0 {
+	for len(res) < BucketSize && bucketNb < HashSize && bucketNb >= 0 {
 		for _, node := range this.buckets[bucketNb] {
-			if len(res) == BUCKET_SIZE {
+			if len(res) == BucketSize {
 				return res
 			}
 
@@ -194,9 +194,9 @@ func (this *Routing) FindNode(hash []byte) []PacketContact {
 	bucketNb = this.countSameBit(hash) + 1
 
 	// if result bucket not full, add some more nodes
-	for len(res) < BUCKET_SIZE && bucketNb >= 0 {
+	for len(res) < BucketSize && bucketNb >= 0 {
 		for _, node := range this.buckets[bucketNb] {
-			if len(res) == BUCKET_SIZE {
+			if len(res) == BucketSize {
 				return res
 			}
 
@@ -212,7 +212,7 @@ func (this *Routing) FindNode(hash []byte) []PacketContact {
 func (this *Routing) GetNode(hash []byte) (PacketContact, error) {
 	bucketNb := this.countSameBit(hash)
 
-	if bucketNb == HASH_SIZE {
+	if bucketNb == HashSize {
 		return PacketContact{}, errors.New("Cannot add own")
 	}
 
@@ -256,7 +256,7 @@ func (this *Routing) GetAllNodes() []PacketContact {
 	this.RLock()
 	defer this.RUnlock()
 
-	for i := 0; i < BUCKET_SIZE; i++ {
+	for i := 0; i < BucketSize; i++ {
 		for _, node := range this.buckets[i] {
 			res = append(res, node)
 		}
@@ -269,7 +269,7 @@ func (this *Routing) GetByAddr(addr string) (PacketContact, error) {
 	this.RLock()
 	defer this.RUnlock()
 
-	for i := 0; i < BUCKET_SIZE; i++ {
+	for i := 0; i < BucketSize; i++ {
 		for _, node := range this.buckets[i] {
 			if addr == node.Addr {
 				return node, nil

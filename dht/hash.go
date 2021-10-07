@@ -2,37 +2,40 @@ package dht
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
+	"crypto/sha1"
 	"encoding/hex"
 )
 
 const (
-	HASH_SIZE   = 128
-	BUCKET_SIZE = HASH_SIZE / 8
+	HashSize   = 160
+	BucketSize = HashSize / 8
 )
 
 type Hash []byte
 
-func (this Hash) Redacted() interface{} {
-	if len(this) == 0 {
-		return this
+func (h Hash) Redacted() interface{} {
+	if len(h) == 0 {
+		return h
 	}
 
-	return hex.EncodeToString(this)[:16]
+	return hex.EncodeToString(h)[:16]
 }
 
 func NewHash(val []byte) Hash {
-	h := sha256.New()
+	h := sha1.New()
 
 	h.Write(val)
 
-	return h.Sum(nil)[:BUCKET_SIZE]
+	return h.Sum(nil)[:BucketSize]
 }
 
 func NewRandomHash() Hash {
-	res := make([]byte, BUCKET_SIZE)
+	res := make([]byte, BucketSize)
 
-	rand.Read(res)
+	_, err := rand.Read(res)
+	if err != nil {
+		return nil
+	}
 
-	return res[:BUCKET_SIZE]
+	return res[:BucketSize]
 }

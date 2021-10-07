@@ -165,8 +165,8 @@ func (this *Query) tryAddToBest(node *Node) {
 
 		smalest := len(this.best)
 
-		if smalest > BUCKET_SIZE {
-			smalest = BUCKET_SIZE
+		if smalest > BucketSize {
+			smalest = BucketSize
 		}
 
 		this.best = this.best[:smalest]

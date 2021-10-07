@@ -57,7 +57,7 @@ func (this *Dht) Cli() {
 
 			fmt.Println(hex.EncodeToString(hash), nb)
 		case "f":
-			if len(splited) != 2 || len(splited[1]) != BUCKET_SIZE*2 {
+			if len(splited) != 2 || len(splited[1]) != BucketSize*2 {
 				fmt.Println("Usage: f key")
 				continue
 			}
