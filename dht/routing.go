@@ -96,7 +96,7 @@ func (this *Routing) distanceBetwin(hash1, hash2 []byte) int {
 	var res int
 
 	for i, v := range hash1 {
-		res += int((v ^ hash2[i])) * int(math.Pow(8, float64(i)))
+		res += int(v ^ hash2[i]) * int(math.Pow(8, float64(i)))
 	}
 
 	return res
@@ -157,7 +157,6 @@ func (this *Routing) RemoveNode(contact PacketContact) {
 		}
 	}
 
-	// this.dht.logger.Warning(contact, "x Cannot find node")
 }
 
 func (this *Routing) FindNode(hash []byte) []PacketContact {

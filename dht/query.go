@@ -139,16 +139,7 @@ func (this *Query) processContact(contact *PacketContact) {
 	this.blacklist = append(this.blacklist, n)
 	this.Unlock()
 
-	// _, ok := (<-n.Ping()).(error)
-
-	// if ok {
-	// 	return
-	// }
-
 	this.tryAddToBest(n)
-
-	// if this.isCloser(n.contact) {
-	// }
 }
 
 func (this *Query) tryAddToBest(node *Node) {

@@ -25,60 +25,10 @@ type Node struct {
 	dht      *Dht
 }
 
-// type PacketContact struct {
-// 	Hash Hash
-// 	Addr string
-// }
-
-// type PacketHeader struct {
-// 	DateSent    int64
-// 	Command     int
-// 	Sender      PacketContact
-// 	ResponseTo  Hash
-// 	MessageHash Hash
-// }
-
-// type Packet struct {
-// 	Header PacketHeader
-// 	Data   []byte
-// }
-
-// func (this *Packet) GetData(ptr interface{}) error {
-// 	var blob bytes.Buffer
-// 	blob.Write(this.Data)
-
-// 	dec := gob.NewDecoder(&blob)
-
-// 	if err := dec.Decode(ptr); err != nil {
-// 		return err
-// 	}
-
-// 	return nil
-// }
-
-// func (this *Packet) SetData(data interface{}) error {
-// 	var blob bytes.Buffer
-
-// 	enc := gob.NewEncoder(&blob)
-
-// 	if err := enc.Encode(data); err != nil {
-// 		return err
-// 	}
-
-// 	this.Data = blob.Bytes()
-
-// 	return nil
-// }
-
 type StoreInst struct {
 	Hash Hash
 	Data []byte
 }
-
-// type CustomCmd struct {
-// 	Command int
-// 	Data    []byte
-// }
 
 var nonce int64 = 0
 
@@ -109,47 +59,13 @@ func NewPacket(dht *Dht, command Command, responseTo Hash, data isPacket_Data) P
 	}
 
 	packet.Header.MessageHash = NewHash(tmp)
-	// packet.Data = data
 
 	return packet
 }
 
-// func NewPacket(dht *Dht, command Command, responseTo Hash, data interface{}) Packet {
-// 	addr, err := net.ResolveUDPAddr("udp", dht.options.ListenAddr)
-
-// 	packet := Packet{
-// 		Header: &PacketHeader{
-// 			DateSent:    time.Now().UnixNano(),
-// 			Command:     command,
-// 			ResponseTo:  responseTo,
-// 			MessageHash: []byte{},
-// 			Sender: &PacketContact{
-// 				Addr: addr.String(),
-// 				Hash: dht.hash,
-// 			},
-// 		},
-// 	}
-
-// 	packet.SetData(data)
-
-// 	tmp, err := msgpack.Marshal(&packet)
-
-// 	if err != nil {
-// 		dht.logger.Warning(err)
-// 	}
-
-// 	packet.Header.MessageHash = NewHash(tmp)
-
-// 	return packet
-// }
-
 func (this *Node) newPacket(command Command, responseTo []byte, data isPacket_Data) Packet {
 	return NewPacket(this.dht, command, responseTo, data)
 }
-
-// func (this *Node) newPacketUngob(command Command, responseTo []byte, data []byte) Packet {
-// 	return NewPacketUngob(this.dht, command, responseTo, data)
-// }
 
 func NewNodeContact(dht *Dht, addr net.Addr, contact PacketContact) *Node {
 	return &Node{
@@ -166,79 +82,6 @@ func NewNode(dht *Dht, addr net.Addr, hash []byte) *Node {
 		Hash: hash,
 	})
 }
-
-// func (this *Node) createPartMessage(packet Packet, command isPacket_Data, hash Hash, value []byte) ([]Packet, error) {
-// 	this.dht.RLock()
-// 	msg, ok := this.dht.sentMsgs[string(hash)]
-// 	this.dht.RUnlock()
-
-// 	if ok {
-// 		return msg, nil
-// 	}
-
-// 	total := (len(value) / (BUFFER_SIZE - 128)) + 1
-
-// 	res := []Packet{}
-
-// 	i := 0
-// 	for len(value) > 0 {
-// 		smalest := len(value)
-
-// 		if smalest > BUFFER_SIZE-128 {
-// 			smalest = BUFFER_SIZE - 128
-// 		}
-
-// 		toSend := value[:smalest]
-// 		value = value[smalest:]
-
-// 		cmd := command
-
-// 		partHeader := PartHeader{
-// 			Id:    int32(i),
-// 			Total: int32(total),
-// 			Hash:  packet.Header.MessageHash,
-// 			Data:  toSend,
-// 		}
-
-// 		i++
-// 		packet.Data = cmd
-// 		res = append(res, packet)
-// 	}
-
-// 	this.dht.Lock()
-// 	this.dht.sentMsgs[string(hash)] = res
-// 	this.dht.Unlock()
-
-// 	return res, nil
-// }
-
-// func (this *Node) newPacketPart(command Command, responseTo Hash, command isPacket_Data) {
-// 	addr, err := net.ResolveUDPAddr("udp", dht.options.ListenAddr)
-
-// 	packet := Packet{
-// 		Header: &PacketHeader{
-// 			DateSent:    time.Now().UnixNano(),
-// 			Command:     command,
-// 			ResponseTo:  responseTo,
-// 			MessageHash: []byte{},
-// 			Sender: PacketContact{
-// 				Addr: addr.String(),
-// 				Hash: dht.hash,
-// 			},
-// 		},
-// 		Command: this.createCommand(),
-// 	}
-
-// 	tmp, err := msgpack.Marshal(&packet)
-
-// 	if err != nil {
-// 		dht.logger.Warning(err)
-// 	}
-
-// 	packet.Header.MessageHash = NewHash(tmp)
-
-// 	return packet
-// }
 
 func (this *Node) Redacted() interface{} {
 	if len(this.contact.Hash) == 0 {
@@ -276,15 +119,12 @@ func (this *Node) handleResponseTo(packet Packet) {
 		this.OnFoundNodes(packet, cb)
 	case Command_STORED:
 		this.OnStored(packet, cb)
-	case Command_CUSTOM_ANSWER:
-		this.OnCustomAnswer(packet, cb)
 	default:
 		this.dht.logger.Error(this, "x answer: UNKNOWN COMMAND", packet.Header.Command)
 		return
 	}
 
 	this.dht.Lock()
-	// close(cb.c)
 	delete(this.dht.commandQueue, cmdQueueHash)
 	this.dht.Unlock()
 }
@@ -298,12 +138,8 @@ func (this *Node) handleRequest(packet Packet) {
 		this.OnFetch(packet)
 	case Command_FETCH_NODES:
 		this.OnFetchNodes(packet)
-	case Command_BROADCAST:
-		this.OnBroadcast(packet)
 	case Command_STORE:
 		this.OnStore(packet)
-	case Command_CUSTOM:
-		this.OnCustom(packet)
 	case Command_REPEAT_PLEASE:
 		this.OnRepeatPlease(packet)
 	default:
@@ -563,8 +399,6 @@ func (this *Node) Store(hash Hash, value []byte) chan interface{} {
 
 	packets := this.createStoreMessage(hash, value)
 
-	// this.dht.logger.Info("STORE WESH", packets[0].Header.MessageHash)
-
 	return this.send(packets)
 }
 
@@ -608,66 +442,7 @@ func (this *Node) Stored(packet Packet, hasStored bool) {
 func (this *Node) OnStored(packet Packet, done CallbackChan) {
 	this.dht.logger.Debug(this, "> STORED")
 
-	// this.dht.logger.Info("STORED WESH", packet.Header.ResponseTo)
 	done.c <- packet
-}
-
-func (this *Node) Custom(value interface{}) chan interface{} {
-	this.dht.logger.Debug(this, "< CUSTOM")
-
-	// FIXME
-
-	// data := this.newPacket(Command_CUSTOM, []byte{}, &Packet_Custom{&Custom{value}})
-
-	// return this.send([]Packet{data})
-	return this.send([]Packet{})
-}
-
-func (this *Node) OnCustom(packet Packet) {
-	this.dht.logger.Debug(this, "> CUSTOM")
-
-	res := this.dht.onCustomCmd(packet)
-	this.dht.logger.Debug(this, "< CUSTOM ANSWER")
-
-	if res == nil {
-		// this.send([]Packet{this.newPacket(Command_CUSTOM_ANSWER, packet.Header.MessageHash, &Packet_CustomAnswer{&CustomAnswer{[]byte("Unknown")}})})
-
-		return
-	}
-
-	this.send([]Packet{this.newPacket(Command_CUSTOM_ANSWER, packet.Header.MessageHash, &Packet_CustomAnswer{&CustomAnswer{res.([]byte)}})})
-}
-
-func (this *Node) OnCustomAnswer(packet Packet, done CallbackChan) {
-	this.dht.logger.Debug(this, "> CUSTOM ANSWER")
-
-	done.c <- packet
-}
-
-func (this *Node) Broadcast(packet Packet) chan interface{} {
-	if !this.dht.hasBroadcast(packet.Header.MessageHash) {
-		this.dht.gotBroadcast = append(this.dht.gotBroadcast, packet.Header.MessageHash)
-	}
-
-	this.dht.logger.Debug(this, "< BROADCAST")
-	// data := this.newPacket(Command_BROADCAST, "", value)
-
-	return this.send([]Packet{packet})
-}
-
-func (this *Node) OnBroadcast(packet Packet) {
-	if this.dht.hasBroadcast(packet.Header.MessageHash) {
-		return
-	}
-
-	this.dht.gotBroadcast = append(this.dht.gotBroadcast, packet.Header.MessageHash)
-
-	this.dht.logger.Debug(this, "> BROADCAST")
-
-	this.dht.Broadcast(packet)
-	this.dht.onBroadcast(packet)
-
-	// this.send(this.newPacket(Command_NOOP, packet.Header.MessageHash, nil))
 }
 
 type RepeatCmd struct {
@@ -736,81 +511,6 @@ func (this *Node) OnRepeatPlease(packet Packet) {
 	this.dht.Unlock()
 }
 
-// type UDPWrapper struct {
-// 	Id    int
-// 	Total int
-// 	Hash  []byte
-// 	Data  []byte
-// }
-// type UDPWrapperList []UDPWrapper
-
-// func (a UDPWrapperList) Len() int           { return len(a) }
-// func (a UDPWrapperList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-// func (a UDPWrapperList) Less(i, j int) bool { return a[i].Id < a[j].Id }
-
-// func CreateUDPWrappers(dht *Dht, packet Packet) ([][]byte, error) {
-// 	dht.RLock()
-// 	msg, ok := dht.sentMsgs[string(packet.Header.MessageHash)]
-// 	dht.RUnlock()
-
-// 	if ok {
-// 		return msg, nil
-// 	}
-
-// 	var blob bytes.Buffer
-// 	enc := gob.NewEncoder(&blob)
-
-// 	err := enc.Encode(packet)
-
-// 	if err != nil {
-// 		return [][]byte{}, err
-// 	}
-
-// 	buff := blob.Bytes()
-
-// 	total := (len(buff) / (BUFFER_SIZE - 128)) + 1
-
-// 	res := [][]byte{}
-
-// 	i := 0
-// 	for len(buff) > 0 {
-// 		smalest := len(buff)
-
-// 		if smalest > BUFFER_SIZE-128 {
-// 			smalest = BUFFER_SIZE - 128
-// 		}
-
-// 		toSend := buff[:smalest]
-// 		buff = buff[smalest:]
-
-// 		wrapper := UDPWrapper{
-// 			Id:    i,
-// 			Total: total,
-// 			Hash:  packet.Header.MessageHash,
-// 			Data:  toSend,
-// 		}
-
-// 		i++
-
-// 		var blob bytes.Buffer
-// 		enc := gob.NewEncoder(&blob)
-
-// 		err := enc.Encode(wrapper)
-
-// 		if err != nil {
-// 			return [][]byte{}, err
-// 		}
-
-// 		res = append(res, blob.Bytes())
-// 	}
-
-// 	dht.Lock()
-// 	dht.sentMsgs[string(packet.Header.MessageHash)] = res
-// 	dht.Unlock()
-
-// 	return res, nil
-// }
-
 func (this *Node) send(packets []Packet) chan interface{} {
 	res := make(chan interface{})
 
@@ -833,9 +533,6 @@ func (this *Node) send(packets []Packet) chan interface{} {
 		timer: timer,
 		c:     res,
 	}
-
-	// this.dht.logger.Warning("ADD CMD QUEUE", cmdQueueHash, hex.EncodeToString(packets[0].Header.ResponseTo))
-	// this.dht.logger.Warning("ADD CMD QUEUE", cmdQueueHash)
 
 	this.dht.Unlock()
 
@@ -882,10 +579,6 @@ func (this *Node) send(packets []Packet) chan interface{} {
 		}
 
 		res <- errors.New(err)
-
-		// close(res)
-
-		// this.disconnect()
 	}()
 
 	this.dht.Lock()
@@ -895,9 +588,4 @@ func (this *Node) send(packets []Packet) chan interface{} {
 
 func (this *Node) disconnect() {
 	this.dht.routing.RemoveNode(this.contact)
-
-	// for _, res := range this.dht.commandQueue {
-	// 	res.timer.Stop()
-	// 	// close(res.c)
-	// }
 }

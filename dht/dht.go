@@ -9,11 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vmihailenco/msgpack"
-
 	"github.com/golang/protobuf/proto"
 
-	logging "github.com/op/go-logging"
+	"github.com/op/go-logging"
 )
 
 type Dht struct {
@@ -26,7 +24,6 @@ type Dht struct {
 	commandQueue  map[string]CallbackChan
 	logger        *logging.Logger
 	server        net.PacketConn
-	gotBroadcast  [][]byte
 	messageChunks map[string]WaitingPartMsg
 	sentMsgs      map[string][]Packet
 }
@@ -40,8 +37,6 @@ type DhtOptions struct {
 	Stats             bool
 	Interactif        bool
 	OnStore           func(Packet) bool
-	OnCustomCmd       func(Packet) interface{}
-	OnBroadcast       func(Packet) interface{}
 	MaxStorageSize    int
 	MaxItemSize       int
 }
@@ -221,8 +216,6 @@ func (this *Dht) bootstrap() error {
 
 	bootstrapNode := NewNode(this, addr, []byte{})
 
-	// this.routing.AddNode(bootstrapNode.contact)
-
 	if err, hasErr := (<-bootstrapNode.Ping()).(error); hasErr {
 		return err
 	}
@@ -298,8 +291,6 @@ func (this *Dht) loop() error {
 
 	defer this.server.Close()
 
-	// msgs := make(map[string][]UDPWrapper)
-
 	for this.running {
 		var message [BUFFER_SIZE]byte
 
@@ -354,8 +345,6 @@ func (this *Dht) handleInPacket(addr net.Addr, blob []byte) {
 
 	node = NewNodeContact(this, addr, *packet.Header.Sender)
 
-	// this.logger.Info("Got packet", packet.Header.Sender.Addr)
-
 	this.routing.AddNode(*packet.Header.Sender)
 
 	node.HandleInPacket(packet)
@@ -363,27 +352,6 @@ func (this *Dht) handleInPacket(addr net.Addr, blob []byte) {
 
 func (this *Dht) Logger() *logging.Logger {
 	return this.logger
-}
-
-func (this *Dht) CustomCmd(data interface{}) {
-	bucket := this.routing.FindNode(this.hash)
-
-	for _, contact := range bucket {
-		addr, _ := net.ResolveUDPAddr("udp", contact.Addr)
-
-		node := NewNodeContact(this, addr, contact)
-		<-node.Custom(data)
-	}
-}
-
-func (this *Dht) hasBroadcast(hash []byte) bool {
-	for _, h := range this.gotBroadcast {
-		if compare(h, hash) == 0 {
-			return true
-		}
-	}
-
-	return false
 }
 
 func compare(hash1, hash2 []byte) int {
@@ -400,36 +368,6 @@ func compare(hash1, hash2 []byte) int {
 	return 0
 }
 
-func (this *Dht) Broadcast(data interface{}) {
-	bucket := this.routing.FindNode(this.hash)
-
-	var packet Packet
-	switch data.(type) {
-	case Packet_Broadcast:
-		packet = data.(Packet)
-	case Packet:
-		packet = data.(Packet)
-	default:
-		// Fixme
-		h, err := msgpack.Marshal(data)
-
-		if err != nil {
-			this.logger.Error("Cannot broadcast")
-
-			return
-		}
-
-		packet = NewPacket(this, Command_BROADCAST, []byte{}, &Packet_Broadcast{&Broadcast{h}})
-	}
-
-	for _, contact := range bucket {
-		addr, _ := net.ResolveUDPAddr("udp", contact.Addr)
-
-		node := NewNodeContact(this, addr, contact)
-		node.Broadcast(packet)
-	}
-}
-
 func (this *Dht) Running() bool {
 	return this.running
 }
@@ -438,22 +376,6 @@ func (this *Dht) Wait() {
 	for this.running {
 		time.Sleep(time.Second)
 	}
-}
-
-func (this *Dht) onCustomCmd(packet Packet) interface{} {
-	if this.options.OnCustomCmd != nil {
-		return this.options.OnCustomCmd(packet)
-	}
-
-	return nil
-}
-
-func (this *Dht) onBroadcast(packet Packet) interface{} {
-	if this.options.OnBroadcast != nil {
-		return this.options.OnBroadcast(packet)
-	}
-
-	return nil
 }
 
 func (this *Dht) onStore(packet Packet) bool {

@@ -28,12 +28,8 @@ func NewWorkerQueue(size, buffer int) *WorkerQueue {
 func (this *WorkerQueue) worker(id int) {
 	for j := range this.jobs {
 		val, _ := <-j()
-		// if !ok {
-		// 	return
-		// }
 		this.Results <- val
 	}
-	// this.onDone()
 }
 
 func (this *WorkerQueue) OnDone() {
